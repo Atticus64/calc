@@ -53,7 +53,7 @@ proc aputs  ; PROCEDIMIENTO QUE IMPRIME UNA CADENA DE CARACTERES
 endp aputs
 
 proc agets  ; PROCEDIMIENTO QUE LEE UNA CADENA DE CARACTERES
-    local len: word, bk: word = tamVarsLoc
+    local len: word, bk: word, inp: byte = tamVarsLoc
     push bp
     mov  bp, sp
     sub sp, tamVarsLoc
@@ -87,9 +87,17 @@ proc agets  ; PROCEDIMIENTO QUE LEE UNA CADENA DE CARACTERES
     je @@endwhi
 
     inc [len]
+    cmp [bk], 0
+    ja @@insert
 
+    mov si, di
     stosb ; guardar
     jmp @@while
+
+@@insert:
+    call insert
+    jmp @@while
+
 
 @@izq:
     mov dx, [len]
@@ -100,6 +108,7 @@ proc agets  ; PROCEDIMIENTO QUE LEE UNA CADENA DE CARACTERES
     dec dl
     call asetp
     inc [bk]
+
     jmp @@while
 
 @@der:
@@ -110,19 +119,12 @@ proc agets  ; PROCEDIMIENTO QUE LEE UNA CADENA DE CARACTERES
     inc dl
     call asetp
     dec [bk]
+    ;pop ax
     jmp @@while
 
 @@del:
     ; es backspace
-    cmp [len], 0
-    je @@while
-
-    dec [len]
-    mov al, 20h         ; A space to clear old character 
-    int 10h
-    mov al, 08h
-    int 10h
-    dec di
+    call delete
     jmp @@while
 
 @@endwhi:
@@ -141,5 +143,102 @@ proc agets  ; PROCEDIMIENTO QUE LEE UNA CADENA DE CARACTERES
     ret
 
 endp agets
+
+proc insert 
+
+    mov [inp], al
+    mov cx, [bk]
+    mov si, di
+    dec si
+    
+    @@iter:
+        lodsb
+        sub si, 2
+        push ax
+    loop @@iter
+
+    mov cx, [bk]
+    mov si, di
+
+    push si 
+    sub si, [bk]
+    mov di, si
+    pop si
+
+    mov al, [inp]
+    stosb
+
+    @@restore:
+        pop ax
+        mov ah, 0Eh
+        int 10h ;INTERRUPCION ESCRIBIR
+        stosb ; guardar
+    loop @@restore
+
+
+    mov cx, [bk]
+    @@back:
+        call getp
+        dec dl
+        call asetp
+    loop @@back
+    ret
+
+endp insert
+
+proc delete
+    cmp [bk], 0
+    je @@ulti
+
+    mov cx, [bk]
+    mov si, di
+    dec si
+    
+    @@fill:
+        lodsb
+        sub si, 2
+        push ax
+    loop @@fill
+
+    mov cx, [bk]
+    mov si, di
+    push si 
+    sub si, [bk]
+    mov di, si
+    pop si
+    dec di
+
+    @@out:
+        pop ax
+        mov ah, 0Eh
+        int 10h ;INTERRUPCION ESCRIBIR
+        stosb ; guardar
+    loop @@out
+
+    mov di, si
+
+@@ulti:
+    dec [len]
+    mov al, 20h         
+    int 10h
+    mov al, 08h
+    int 10h
+    dec di
+
+    cmp [bk], 0
+    je @@exit
+
+    mov cx, [bk]
+    @@back:
+        call getp
+        dec dl
+        call asetp
+    loop @@back
+
+@@exit:
+    ret
+
+endp
+
     
     end
