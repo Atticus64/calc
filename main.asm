@@ -5,9 +5,14 @@ stack 256
  
 dataseg
 codsal db 0
-input    db  100 dup(?)
-cad1 db 40 dup(?)
-cad2 db 40 dup(?)
+welc   db 'Ingresa la operacion'
+       db  13, 10, 0   
+prompt db '> '
+       db 0
+input  db  100 dup(?)
+cad1   db 40 dup(?)
+cad2   db 40 dup(?)
+resul  db 10 dup(?)
 
 macro cursor
     mov cl, 7
@@ -15,8 +20,14 @@ macro cursor
     int 10h
 endm
 
+macro clear
+  mov ah, 0
+  mov al, 3  ; text mode 80x25 16 colours
+  int 10h
+endm
+
 codeseg
-extrn aputs:proc, agets:proc
+extrn aputs:proc, agets:proc, aputsc:proc, aatoi:proc, aitoa:proc, astrlen:proc
 
 
 ; input: si -> cadena a parsear
@@ -61,6 +72,40 @@ proc parser
 endp
 
 
+; params 
+; cl -> operator
+; [ax, bx] -> numbers
+proc calc
+
+cmp cl, '+'
+je @@suma
+cmp cl, '-'
+je @@resta
+cmp cl, '*'
+je @@mult
+cmp cl, '/'
+je @@divi
+
+
+@@suma:
+add ax, bx
+jmp @@fin
+@@resta:
+sub ax, bx
+jmp @@fin
+@@mult:
+imul bx
+jmp @@fin
+@@divi:
+cwd
+idiv bx
+jmp @@fin
+
+@@fin:
+    ret
+endp
+
+
 inicio:
 mov ax, @data 
 mov ds, ax
@@ -68,18 +113,60 @@ mov es, ax
 
 mov ch, 0
 cursor
+
+clear
+main:
+mov si, offset welc
+mov bl, 6
+call aputsc
+mov si, offset prompt
+mov bl, 3
+call aputsc
+
 mov di, offset input
 call agets
-
-
-
 
 mov si, offset input
 call parser
 
+mov si, offset cad1
+call aatoi
+mov bx, ax
 mov si, offset cad2
-call aputs
+call aatoi
+xchg ax, bx
 
+cmp ax, 0
+jz exit
+
+call calc
+mov di, offset resul
+
+mov bx, 2
+call aitoa
+mov si, di
+mov bl, 4
+call aputsc
+
+mov bx, 16
+call aitoa
+mov si, di
+mov bl, 9
+call aputsc
+
+mov bx, 10
+call aitoa
+mov si, di
+mov bl, 2
+call aputsc
+
+mov ax, 0
+mov bx, 0
+jmp main
+;mov si, offset cad2
+;call aputs
+
+exit:
 mov ch, 6
 cursor
 

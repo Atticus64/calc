@@ -3,7 +3,13 @@ dosseg
 model small
 
 codeseg
-public aputs, agets
+public aputs, agets, aputsc
+
+
+macro write
+mov ah, 0Eh
+int 10h 
+endm
 
 proc getp
     push bx
@@ -52,6 +58,51 @@ proc aputs  ; PROCEDIMIENTO QUE IMPRIME UNA CADENA DE CARACTERES
 
 endp aputs
 
+
+proc aputsc
+    push ax
+    push bx
+    push cx
+
+    cld
+
+@@while:
+    lodsb
+    cmp al, 0
+    je @@endwhi
+
+    cmp al, 13    
+    je @@ctrl
+    cmp al, 10
+    je @@ctrl
+
+    jmp @@print
+
+@@ctrl:
+    mov ah, 0Eh
+    mov bh, 0
+    int 10h
+    jmp @@while
+
+@@print:
+    mov ah, 09h
+    mov bh, 0
+    mov cx, 1
+    int 10h
+    call getp
+    inc dl
+    call asetp
+    jmp @@while
+
+@@endwhi:
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+endp aputsc
+
+
 proc agets  ; PROCEDIMIENTO QUE LEE UNA CADENA DE CARACTERES
     local len: word, bk: word, inp: byte = tamVarsLoc
     push bp
@@ -77,12 +128,11 @@ proc agets  ; PROCEDIMIENTO QUE LEE UNA CADENA DE CARACTERES
     cmp ah, 77
     je @@der
 
-    mov ah, 0Eh
-    int 10h ;INTERRUPCION ESCRIBIR
- 
     cmp al, 8
     je @@del    
 
+    write
+   
     cmp al, 13
     je @@endwhi
 
@@ -123,7 +173,11 @@ proc agets  ; PROCEDIMIENTO QUE LEE UNA CADENA DE CARACTERES
     jmp @@while
 
 @@del:
-    ; es backspace
+    cmp [len], 0
+    je @@while
+
+    write
+
     call delete
     jmp @@while
 
@@ -131,8 +185,7 @@ proc agets  ; PROCEDIMIENTO QUE LEE UNA CADENA DE CARACTERES
     mov [byte di], 0
 
     mov al, 10
-    mov ah, 0Eh
-    int 10h ;INTERRUPCION ESCRIBIR
+    write
 
     pop di
     pop bx
@@ -167,11 +220,11 @@ proc insert
 
     mov al, [inp]
     stosb
+    inc [len]
 
     @@restore:
         pop ax
-        mov ah, 0Eh
-        int 10h ;INTERRUPCION ESCRIBIR
+        write
         stosb ; guardar
     loop @@restore
 
@@ -210,14 +263,16 @@ proc delete
 
     @@out:
         pop ax
-        mov ah, 0Eh
-        int 10h ;INTERRUPCION ESCRIBIR
+        write
         stosb ; guardar
     loop @@out
 
     mov di, si
 
 @@ulti:
+    cmp [len], 0
+    je @@exit
+
     dec [len]
     mov al, 20h         
     int 10h
