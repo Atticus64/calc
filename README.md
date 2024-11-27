@@ -1,7 +1,7 @@
 # Basic Calculator 
 
-Recibe una entrada con una operacion
-ya sea suma, resta, multiplicación o división
+Recibe una entrada con una operacion ya sea suma, resta, multiplicación o división
+
 Los parametros son numeros en Hexadecimal, Binario o Decimal
 
 Ejemplo:
