@@ -4,7 +4,7 @@ model small
 
 codeseg
 
-public astrlen, astrupr, aatoi, aitoa
+public astrlen, astrupr, aatoi, aitoa, astrcat, astrcmp
 ; Parámetros:
 ;
 ; SI = cadena
@@ -27,6 +27,34 @@ proc astrlen
  pop ax
  ret
 endp astrlen
+
+proc astrcat
+    push ax
+    push si
+    push di
+
+    xor al, al
+    cld
+
+@@whi:
+    scasb
+    jnz @@whi
+
+    dec di
+
+@@do:
+    lodsb
+    stosb
+    cmp al, 0
+    jne @@do
+
+@@fin:
+    pop di
+    pop si
+    pop ax
+    ret
+endp astrcat
+
 
 
 ; Parámetros:
@@ -156,11 +184,15 @@ proc obtenBase
  je @@hex ; goto @@hex
  cmp [byte si], 'D' ; if([si] == 'D')
  je @@dec ; goto @@dec
+ cmp [byte si], 'O'
+ je @@oct
  jmp @@fin ; goto @@fin
 
 @@bin: mov bx, 2 ; base = 2
  jmp @@dec ; goto @@dec
 @@hex: mov bx,16 ; Base = 16
+ jmp @@dec
+@@oct: mov bx, 8
 @@dec: dec cx ; CX--
 
 @@fin:
@@ -225,20 +257,41 @@ endp valC
 ; DI = cadena para guardar el num 
 ; BX = 2, 10, 16, base del número
 ; AX = número
+; CX = enter ? 0 : 1
 ;
 ; Regresa:
 ; DI = cadena completa
 proc aitoa
+local carr: word = tamVarsLoc
+push bp
+mov  bp, sp
+sub sp, tamVarsLoc
+mov [carr], cx
 push cx
 push dx
 push ax
 push bx
 push di
 
-
 xor cx, cx
 xor dx, dx
 
+push ax
+cmp bx, 10
+je @@dec
+jmp @@cont
+
+@@dec:
+test ax, 8000h    
+jnz @@neg
+jmp @@cont
+
+@@neg:
+mov al, '-'
+stosb
+
+@@cont:
+pop ax
 call charB
 push dx
 inc cx
@@ -267,17 +320,23 @@ jmp @@iter
 loop @@ciclo
 
 @@end:
+cmp [carr], 0 
+je @@exit
 mov al, 13
 stosb
 mov al, 10
 stosb
-mov [byte di], 0
 
+@@exit:
+mov [byte di], 0
 pop di
 pop bx
 pop ax
 pop dx
 pop cx
+mov sp, bp ; Elimina variables locales
+pop bp
+
 endp aitoa
 
 
@@ -287,6 +346,8 @@ cmp bx, 16
 je @@hex
 cmp bx, 2 
 je @@bin
+cmp bx, 8
+je @@oct
 ret
 
 @@hex:
@@ -295,7 +356,9 @@ ret
 @@bin:
 mov dl, 'B'
 ret
-
+@@oct:
+mov dl, 'O'
+ret
 endp charB
 
 ; dx: número
@@ -308,5 +371,26 @@ proc charV
     @@hex: add dx, 55 
     ret
 endp charV
+
+proc astrcmp
+    cld
+
+@@whi:
+    cmp [byte si], 0
+    je @@fin
+    cmpsb
+    jne @@endwhi
+    jmp @@whi
+
+@@endwhi:
+    dec si
+    dec di
+
+@@fin:
+    mov al, [byte si]
+    sub al, [byte di]
+    cbw
+    ret
+endp astrcmp
 
 end
